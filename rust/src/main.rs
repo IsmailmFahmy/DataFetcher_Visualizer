@@ -20,7 +20,8 @@ fn main() -> Result<()>{
     loop {
 
         let _ = process_api_to_db(ticker)?;
-        let _ = plot_graph();
+
+        // let _ = plot_graph();
 
         thread::sleep(Duration::from_millis(30000));
         n =n+1;
