@@ -1,52 +1,47 @@
-use std::env;
-use reqwest::blocking::Client;
+use std::{thread, time::Duration};
+use deserialize::deserialize;
+use anyhow::Result;
+
+
+use crate::api::call_api;
+use crate::db::insert_to_db;
 
 mod deserialize;
 mod db;
 mod schema;
+mod api;
+mod python_handling;
 
-use deserialize::deserialize;
-use db::insert_to_db;
 
-fn main() {
-
-    let key = fetch_api_key()
-        .unwrap_or_else(|error|format!("No Alpha Vantage API key found, please set the enviromental variable \"AV_Key\" to the API Key\nYou can do this by adding the following to the .bashrc file \nexport AV_Key=*key*\nerror:{:?}",error));
-
+fn main() -> Result<()>{
+    let mut n = 0;
     let ticker: &str = "IBM";
 
-    let response = call_api(key,ticker)
-        .unwrap_or_else(|e| format!("Error with API request: cause: {}",e ));
+    loop {
 
-    let deserialize_data = deserialize(&response, ticker).unwrap();
+        let _ = process_api_to_db(ticker)?;
+        let _ = plot_graph();
 
-    // println!("{response}");
-    // println!("{:#?}", deserialize_data);
-
-    let x = insert_to_db(deserialize_data);
-    if x.is_ok(){
-        println!("el mafrood teshta8al")
+        thread::sleep(Duration::from_millis(30000));
+        n =n+1;
+        println!("loop number {n}");
     }
 }
 
-fn fetch_api_key() -> Result<String, env::VarError> {
-    let key = "FH_Key";
-    env::var(key)
+
+
+fn process_api_to_db(ticker: &str) -> Result<()> {
+        let response = call_api(ticker)
+            .unwrap_or_else(|e| format!("Error with API request: cause: {}",e ));
+
+
+        let deserialize_data = deserialize(&response, ticker)
+            .expect("error deserializing data");
+
+
+
+        let _ = insert_to_db(deserialize_data)
+            .expect("error inserting data into the database");
+
+    Ok(())
 }
-
-
-fn call_api(key: String, ticker: &str) -> Result<String, reqwest::Error> {
-    let ticker = ticker.to_uppercase();
-    let client = Client::new();
-
-    let api_url = format!("https://finnhub.io/api/v1/quote?symbol={ticker}&token={key}");
-
-    let response = client.get(api_url)
-        .send()?
-        .text()?;
-    Ok(response)
-}
-
-
-
-
