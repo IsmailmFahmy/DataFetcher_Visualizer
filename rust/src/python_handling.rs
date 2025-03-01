@@ -10,18 +10,20 @@ use anyhow::Result;
 // }
 
 // Use enums to add constrains :P
-enum SignalType {
+pub enum SignalType {
     Start,
     Update
 }
 
-pub fn manage_graph(ticker: &str /* ,datatype : enum */, signal: SignalType) -> Result<()> {
+pub fn manage_graph(ticker: &str /* ,datatype : DataType */, signal: SignalType) -> Result<()> {
     
     let mut child = Command::new("python3")     // Start Python script as a child process
-        .arg("plot_script.py")                  
+        .current_dir("../python")            // change working directory
+        .arg("./plot_script.py")                  // path to python script
         .stdin(Stdio::piped())                  // Open a pipe for sending data
         .spawn()                                // Run the command
         .expect("Failed to start Python script");
+
 
 
     let stdin = child.stdin
@@ -37,7 +39,7 @@ pub fn manage_graph(ticker: &str /* ,datatype : enum */, signal: SignalType) -> 
 
     // message to be sent to the python script
     let init_msg = json!({
-        "ticker/location": ticker,
+        "ticker": ticker,
         // "type": datatype,
         "signal": signal
     })
