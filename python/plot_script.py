@@ -1,22 +1,22 @@
 import sqlite3
 import matplotlib.pyplot as plt
 from datetime import datetime
+import json
+import sys
 
 
 # Fetch data
 def fetch_initial_data(ticker):
     # Connect to the database
-    conn = sqlite3.connect("stock_data.db")
+    conn = sqlite3.connect("../stock_data.db")
     cursor = conn.cursor()
 
     # SQL to fetch the time & prices for all entries with a certain ticker
-    cursor.execute("""SELECT unixtime, currentprice FROM stockdata 
-                   WHERE ticker = ? 
-                   ORDER BY unixtime""",
-                   (ticker,))
+    query = f"SELECT unixtime, currentprice FROM stockdata WHERE ticker = '{ticker}' ORDER BY unixtime"
+
+    cursor.execute(query)
     data = cursor.fetchall()
     conn.close()
-
     return data
 
 
@@ -28,7 +28,7 @@ def fetch_last_record(ticker):
 
     # SQL to fetch the latest added entry with the same criteria
     cursor.execute("""SELECT unixtime, currentprice FROM stockdata 
-                   WHERE ticker = ? 
+                   WHERE ticker = ?
                    ORDER BY unixtime DESC 
                    LIMIT 1""",
                    (ticker,))
@@ -47,8 +47,8 @@ def plot_graph(data, ticker):
     timestamps = [row[0] for row in data]
     price = [row[1] for row in data]
 
-    start_time = data[0][0]
-    end_time = data[-1][0]
+    # start_time = timestamps[0]
+    # end_time = timestamps[-1]
 
     # Create plot
     plt.figure(figsize=(10, 5))
@@ -69,7 +69,7 @@ def plot_graph(data, ticker):
     plt.xlabel("Time")
     plt.ylabel("Price")
 
-    plt.title(f"Price of {ticker} from {start_time} to {end_time}")
+    # plt.title(f"Price of {ticker} from {start_time} to {end_time}")
 
     plt.legend()
     plt.grid()
@@ -86,13 +86,43 @@ def update_graph(timestamps,price, new_data, plot):
     plot.set_xdata(price)
     plt.draw()
 
+def read_stdin():
+    try:
+        msg = json.loads(line.strip())  # Read JSON from stdin
+        ticker = msg.get("ticker", "")
+        # command = msg.get("type", "")
+        signal = msg.get("signal", "")
+        return ticker, signal
+
+
+    except Exception as e:
+        print(f"Error processing input: {e}", file=sys.stderr)
+
+    return "error", "error"
+
+
 
 
 if __name__ == "__main__":
-    
-    ticker = "IBM"
-    initial_data = fetch_initial_data(ticker)
-    time, price, plot = plot_graph(initial_data, ticker)
-    if (some signal):
-        new_data = fetch_last_record(ticker)
-        update_graph(time, price, new_data, plot)
+
+
+    for line in sys.stdin:
+        print("reading again")
+        ticker, signal = read_stdin()
+        print(f"ticker -> {ticker}, signal -> {signal}")
+        if signal == "start":
+            initial_data = fetch_initial_data(ticker)
+            time, price, plot = plot_graph(initial_data, ticker)
+
+        elif signal == "update":
+            print("fetching last record")
+            new_data = fetch_last_record(ticker)
+
+            print("updating graph")
+            update_graph(time, price, new_data, plot)
+
+
+
+if __name__ == "__main__":
+    plot_data = {}
+
